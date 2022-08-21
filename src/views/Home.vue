@@ -110,14 +110,14 @@
         button.btn2 Подключить всего за 299₽ в месяц 
   .changeSymbolMenu( :class="{'close':activeSybmol}")
     .container
-      h1 Выберите знак
+      h1 выберите знак
       ul
         li(v-for="s in Symbols" :key="s.name" v-bind:data-symbol="s.name" class="symbolItem") 
           img( :src="getImgSybmol(s.name)"  v-bind:data-symbol="s.name" )
           div( v-bind:data-symbol="s.name" )
             .name( v-bind:data-symbol="s.name" ) {{s.name}}
             .date( v-bind:data-symbol="s.name" ) {{s.date}}
-  .header( :class=`{'mini':pageStyle.headerApp.mini === true} `)
+  .header( :class="{'mini':pageStyle.headerApp.mini === true}")
     .icon.activeSymbolIcon(@click="activeSybmol = false")
       .background
         img(:src="getImgSybmol(activeSybmol)")
@@ -160,25 +160,27 @@
                 circle.unit(r="15.9" cx="50%" cy="50%")
         p(v-html="infoCart[activeSybmolNymber].main_cart.content")
 
-      .card.info-cart.icart(v-for="card in infoCart[activeSybmolNymber].other_carts" :key="card.name")
+      .card.info-cart.icart(v-for="card in infoCart[activeSybmolNymber].other_carts" :key="card.name" :class="{'openPremiumBanner':!(premiumAccount || !(card.title == '💰 Финансовый прогноз' || card.title == '💖 Любовь и отношения' || card.title == '🔥 Важные события'))}")
         .button-more 
           p Читать больше
         h1 {{card.title}}
-        p(v-html="card.content")
-      
-      .card.actives
+        p(v-html="card.content" v-if="premiumAccount || !(card.title == '💰 Финансовый прогноз' || card.title == '💖 Любовь и отношения' || card.title == '🔥 Важные события')")
+        p(v-else) 
+          p(v-if="card.title == '💰 Финансовый прогноз'") Блок финансовый прогноз доступен для про подписчиков
+          p(v-if="card.title == '💖 Любовь и отношения'") Блок Любовь и отношения доступен для про подписчиков
+          p(v-if="card.title == '🔥 Важные события'") Блок Важные события доступен для про подписчиков
+          button.probutton подробнее
+      .card.actives(v-if="activeDay == 0 || activeDay == 1")
         h1 Активности
         ul
-          li(v-for="actives in infoCart[activeSybmolNymber].actives" :key="actives.title" :class="{good: actives.status == 1, bad: actives.status == 2, neutral: actives.status == 3, premium: !actives.access && !premiumAccount}")
+          li(v-for="actives in infoCart[activeSybmolNymber].actives" :key="actives.title" :class="{super: actives.status == 0, good: actives.status == 1, bad: actives.status == 2, neutral: actives.status == 3, premium: !actives.access && !premiumAccount}")
             .bg
               p.title {{actives.title}}
+              p.desc(v-if="actives.status == 0 && (actives.access || premiumAccount)") Отличный день
               p.desc(v-if="actives.status == 1 && (actives.access || premiumAccount)") Хороший день
               p.desc(v-if="actives.status == 2 && (actives.access || premiumAccount)") Плохой день
               p.desc(v-if="actives.status == 3 && (actives.access || premiumAccount)") Нейтральный день
               p.desc.openPremiumBanner(v-if="!actives.access && !premiumAccount") Доступно по подписке
-      .card.comment
-        h1 Понравился разбор?
-        button Оставьте отзыв
       .card.myaddbanner
         img(src="@/assets/РазборСудьбы.jpg")
        
@@ -191,12 +193,13 @@ export default {
   name: 'Home',
   data() {
     return {
+      pickSymbol: [],
       openBannerPremium: false,
       premiumAccount: false,
       changeSybmol: false,
       activeSybmol: false,
       activeSybmolNymber: 0,
-      activeDay: 1,
+      activeDay: 0,
       pageStyle: {
         headerApp: {mini: false},
       },
@@ -225,13 +228,19 @@ export default {
   },
   watch: {
      activeSybmol:  function(val){
-      console.log(val);
       this.changeSybmol = true;
       let _this = this
       _this.activeSybmolNymber = _this.infoCartDay1.findIndex(x => x.name == val);
+      localStorage.setItem('activeSybmol', JSON.stringify(this.activeSybmol));
     },
     activeDay: function(){
       this.changeSybmol = true;
+    },
+    pickSymbol: {
+      handler: function () {
+        localStorage.setItem('pickSymbol', JSON.stringify(this.pickSymbol));
+      },
+      deep: true
     }
   },
   methods: {
@@ -252,6 +261,14 @@ export default {
         }
       },
     loadInfo: function(){
+      if(JSON.parse(localStorage.getItem('activeSybmol'))) {
+          let info = JSON.parse(localStorage.getItem('activeSybmol'));
+          this.activeSybmol = info;
+      }
+      if(JSON.parse(localStorage.getItem('pickSymbol'))) {
+          let info = JSON.parse(localStorage.getItem('pickSymbol'));
+          this.pickSymbol = info;
+      }  
       if(JSON.parse(localStorage.getItem('symbols_info0'))) {
           let info = JSON.parse(localStorage.getItem('symbols_info0'));
           this.infoCartDay0 = info;
@@ -304,7 +321,19 @@ export default {
       e.srcElement.parentNode.parentNode.classList.remove('big');
     },
     closeChangeSybmol: function(e){
-      this.activeSybmol = e.srcElement.dataset.symbol;
+      console.log(e.srcElement);
+      console.log(e.srcElement.parentNode);
+
+        if(e.srcElement.className.indexOf('disabled') == -1 && e.srcElement.parentNode.className.indexOf('disabled') == -1 && e.srcElement.parentNode.parentNode.className.indexOf('disabled') == -1){
+
+          this.activeSybmol = e.srcElement.dataset.symbol;
+          if (this.pickSymbol.find(x => x == this.activeSybmol) == null){
+            this.pickSymbol.push(this.activeSybmol);
+          }
+        } 
+
+      
+      
     },
     getImgSybmol(pic) {
       if (pic)
@@ -333,17 +362,14 @@ export default {
       let diagram = window.document.getElementsByClassName('diagram');
       for (let i = 0; i < diagram.length; i++) {
         let number = diagram[i].dataset.number;
-        console.log(number);
         diagram[i].childNodes[2].firstChild.firstChild.setAttribute('style', 'stroke-dasharray: '+number+' 100;');
       }
-      console.log(diagram);
     },
     setOpenPremiumBanner(){
       let el = window.document.getElementsByClassName('openPremiumBanner');
       let _this = this;
       console.log(el);
       for (let i = 0; i < el.length; i++) {
-        console.log(el[i]);
         el[i].addEventListener('click', function(){_this.openBannerPremium = true})
       }
       
@@ -362,6 +388,23 @@ export default {
     changeDay(e){
       this.activeDay = e.srcElement.dataset.day;
       this.changeSybmol = true;
+    },
+    setPermissionSybmolPick(){
+      let symbol = window.document.getElementsByClassName('symbolItem');
+      let _this = this;
+      if(_this.premiumAccount == false){
+        for (let i = 0; i < symbol.length; i++) {
+          let s = symbol[i];
+          let name = s.dataset.symbol;
+          if(_this.pickSymbol.length > 1){
+            if(_this.pickSymbol.find(x => x == name) == null){
+              s.classList.add('disabled');
+              s.classList.add('openPremiumBanner');
+            }
+          }
+        }
+      }
+      
     }
   },
   mounted(){    
@@ -371,7 +414,7 @@ export default {
     let symbols = window.document.getElementsByClassName('symbolItem');
     
     for (let i = 0; i < symbols.length; i++) {
-      symbols[i].addEventListener('click', this.closeChangeSybmol, false)
+      symbols[i].addEventListener('click', this.closeChangeSybmol)
     }
     this.loadInfo();
     if (this.activeDay == 0)
@@ -401,6 +444,7 @@ export default {
       this.changeSybmol = false;
     }
     this.setDiagram();
+    this.setPermissionSybmolPick();
   }
 }
 </script>
@@ -443,7 +487,7 @@ export default {
   .bannerPremium
     position fixed
     background #f0f0f0
-    z-index 99999
+    z-index 999999999
     width 100%
     height 100%
     top 0
@@ -583,6 +627,7 @@ export default {
           align-items center
           margin-bottom: 30px
           width 80%
+          position relative
 
           img 
             width 65px
@@ -604,6 +649,23 @@ export default {
               line-height: 21px;
               text-transform: uppercase;
               opacity .6
+
+        li.disabled 
+          img
+            opacity: 0.3
+          div
+            opacity: 0.3
+
+        li.disabled::before
+          content: "Доступно по подписке";
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%,-50%);
+          color: red;
+          text-align: center;
+          font-weight 600
+
   .changeSymbolMenu.close
     left -100%
 
@@ -715,6 +777,16 @@ export default {
         position relative
         transition 1.5s
         max-height 1000px
+
+        .probutton
+          width: 100%;
+          border: none;
+          padding: 10px 0;
+          margin-top: 15px;
+          border-radius: 7px;
+          text-transform: uppercase;
+          box-shadow: 0px 5px 5px -5px rgba(34, 60, 80, 0.6);
+
 
         .diagrams
           display flex
@@ -870,8 +942,10 @@ export default {
             position: absolute;
             top 6px
 
-          li.good::before
+          li.super::before
             background: #AEED7D
+          li.good::before
+            background: #eaed7d
           li.bad::before
             background: #ED917D
           li.neutral::before
